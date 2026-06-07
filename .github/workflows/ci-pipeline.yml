@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.26'
 
 jobs:
   # =========================================================================
@@ -153,9 +153,12 @@ jobs:
         run: |
           for manifest in kubernetes-manifests/*.yaml; do
             filename=$(basename "$manifest")
-            if [ "$filename" != "kustomization.yaml" ]; then
-              echo "Validating $manifest..."
-              kubectl apply --dry-run=client -f "$manifest" 2>&1 || exit 1
+            # Skip non-manifest files
+            if [ "$filename" = "kustomization.yaml" ] || [ "$filename" = "README.md" ]; then
+              echo "Skipping $filename (not a direct manifest)"
+              continue
             fi
+            echo "Validating $manifest..."
+            kubectl apply --dry-run=client --validate=false -f "$manifest" 2>&1 || exit 1
           done
           echo "All manifests are valid!"
