@@ -27,4 +27,5 @@ resources:
 - network-policy-productcatalogservice.yaml
 - network-policy-recommendationservice.yaml
 - network-policy-redis.yaml
+- network-policy-reviewsservice.yaml
 - network-policy-shippingservice.yaml

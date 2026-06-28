@@ -52,23 +52,33 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+      ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
     steps:
       - name: Trigger ArgoCD Application Sync
         run: |
+          set -euo pipefail
+          if [ -z "${ARGOCD_SERVER}" ] || [ -z "${ARGOCD_AUTH_TOKEN}" ]; then
+            echo "::warning::ARGOCD_SERVER / ARGOCD_AUTH_TOKEN not configured — skipping automated sync."
+            echo "Images are pushed to Docker Hub; sync manually (scripts/sync-app.sh) or set the secrets."
+            exit 0
+          fi
           echo "=== Triggering ArgoCD sync for online-boutique ==="
-          # ArgoCD REST API sync trigger (no CLI needed)
-          curl -s -X POST \
-            "https://${{ secrets.ARGOCD_SERVER }}/api/v1/applications/online-boutique/sync" \
-            -H "Authorization: Bearer ${{ secrets.ARGOCD_AUTH_TOKEN }}" \
+          # Fail the job (no '|| echo' swallow) if the sync genuinely fails, so a
+          # broken deploy is never reported as green.
+          http_code=$(curl -sS -o /tmp/sync.out -w "%{http_code}" -X POST \
+            "https://${ARGOCD_SERVER}/api/v1/applications/online-boutique/sync" \
+            -H "Authorization: Bearer ${ARGOCD_AUTH_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{"revision": "main", "prune": true}' \
-            --insecure || echo "ArgoCD sync trigger sent (verify in ArgoCD UI)"
-
-      - name: Wait for Health Check
-        run: |
-          echo "=== Waiting 60s for ArgoCD to sync and verify health ==="
-          sleep 60
-          echo "Deployment triggered. Verify in ArgoCD UI."
+            --insecure)
+          echo "ArgoCD responded HTTP ${http_code}"
+          cat /tmp/sync.out || true
+          if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+            echo "::error::ArgoCD sync failed (HTTP ${http_code})"
+            exit 1
+          fi
 
   # =========================================
   # Job 3: Post-Deploy Notification

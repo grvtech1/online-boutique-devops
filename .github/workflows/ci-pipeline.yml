@@ -75,13 +75,36 @@ jobs:
           path: src/productcatalogservice/coverage.out
 
   # =========================================================================
+  # JOB 2b: Reviews Service — race-detector unit tests
+  # WHY: The store is concurrency-critical; -race catches data races that plain
+  #      tests cannot. Runs in its own job because it has its own Go module.
+  # =========================================================================
+  test-reviewsservice:
+    name: "Reviews Service Tests (-race)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: src/reviewsservice/go.mod
+
+      - name: go vet + race tests
+        run: |
+          cd src/reviewsservice
+          go vet ./...
+          go test -race -v -coverprofile=coverage.out ./...
+
+  # =========================================================================
   # JOB 3: Build Docker Images
   # WHY: Ensures the container builds successfully before merging
   # =========================================================================
   build:
     name: "Build Docker Images"
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-reviewsservice]
     strategy:
       matrix:
         service:
@@ -89,6 +112,8 @@ jobs:
             context: src/frontend
           - name: productcatalogservice
             context: src/productcatalogservice
+          - name: reviewsservice
+            context: src/reviewsservice
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

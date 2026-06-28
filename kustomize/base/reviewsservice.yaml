@@ -19,6 +19,15 @@ metadata:
   labels:
     app: reviewsservice
 spec:
+  # IMPORTANT: keep this at a single replica and do NOT attach an HPA. The store
+  # is in-process and not shared across pods; multiple replicas would each hold a
+  # divergent copy of the reviews. Scale out only after moving to a shared
+  # datastore (see src/reviewsservice/reviews.go — the Store interface seam).
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: reviewsservice
@@ -28,6 +37,7 @@ spec:
         app: reviewsservice
     spec:
       serviceAccountName: reviewsservice
+      terminationGracePeriodSeconds: 25
       securityContext:
         fsGroup: 1000
         runAsGroup: 1000
@@ -44,7 +54,10 @@ spec:
           readOnlyRootFilesystem: true
         # Built and pushed by the CD pipeline. Change the registry/owner to match
         # your DOCKER_USERNAME if it is not "grvp1".
+        # NOTE: pin to an immutable :<git-sha> tag for real GitOps rollbacks;
+        # :latest + Always is the pragmatic interim until image-tag write-back.
         image: docker.io/grvp1/reviewsservice:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 50051
         env:
