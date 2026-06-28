@@ -43,8 +43,8 @@ spec:
           privileged: false
           readOnlyRootFilesystem: true
         # Built and pushed by the CD pipeline. Change the registry/owner to match
-        # your DOCKER_USERNAME if it is not "grvtech1".
-        image: docker.io/grvtech1/reviewsservice:latest
+        # your DOCKER_USERNAME if it is not "grvp1".
+        image: docker.io/grvp1/reviewsservice:latest
         ports:
         - containerPort: 50051
         env:
