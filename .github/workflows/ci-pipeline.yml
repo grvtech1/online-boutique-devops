@@ -5,7 +5,6 @@
 # WHY:  Catches bugs BEFORE they reach production
 # WHO:  Every developer triggers this automatically on git push
 # =============================================================================
-
 name: "CI Pipeline - Build and Test"
 
 on:
